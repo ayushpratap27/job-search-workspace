@@ -6,6 +6,7 @@ import Placeholder from '@/components/Placeholder'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Applications from '@/pages/Applications'
+import ApplicationDetail from '@/pages/ApplicationDetail'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,7 +24,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/"              element={<Dashboard />} />
               <Route path="/applications"  element={<Applications />} />
-              <Route path="/applications/:id" element={<Placeholder title="Application Detail" />} />
+              <Route path="/applications/:id" element={<ApplicationDetail />} />
               <Route path="/networking"    element={<Placeholder title="Networking" />} />
               <Route path="/recent-hires"  element={<Placeholder title="Recent Hires" />} />
               <Route path="/notifications" element={<Placeholder title="Notifications" />} />
