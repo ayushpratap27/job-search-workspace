@@ -141,3 +141,51 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Go
+/backend/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/backend/tmp/
+
+# Go workspace
+go.work.sum
+
+# Air (Go live reload)
+/backend/tmp/
+
+# Playwright browsers
+/automation/node_modules/
+/automation/.playwright/
+**/playwright-report/
+**/test-results/
+
+# LinkedIn session state (contains auth cookies — never commit)
+automation/session/*.json
+
+# Environment files (all services)
+.env
+.env.local
+.env.*.local
+backend/.env
+automation/.env
+frontend/.env
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Docker volumes
+postgres-data/
+redis-data/
