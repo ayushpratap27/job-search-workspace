@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import AppLayout from '@/components/layout/AppLayout'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import Placeholder from '@/components/Placeholder'
 import Login from '@/pages/Login'
 
 const queryClient = new QueryClient({
@@ -16,7 +18,15 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<div className="p-8 text-gray-700">Dashboard — coming soon</div>} />
+            <Route element={<AppLayout />}>
+              <Route path="/"              element={<Placeholder title="Dashboard" />} />
+              <Route path="/applications"  element={<Placeholder title="Applications" />} />
+              <Route path="/applications/:id" element={<Placeholder title="Application Detail" />} />
+              <Route path="/networking"    element={<Placeholder title="Networking" />} />
+              <Route path="/recent-hires"  element={<Placeholder title="Recent Hires" />} />
+              <Route path="/notifications" element={<Placeholder title="Notifications" />} />
+              <Route path="/settings"      element={<Placeholder title="Settings" />} />
+            </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
