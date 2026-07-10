@@ -4,6 +4,8 @@ import AppLayout from '@/components/layout/AppLayout'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Placeholder from '@/components/Placeholder'
 import Login from '@/pages/Login'
+import Dashboard from '@/pages/Dashboard'
+import Applications from '@/pages/Applications'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,8 +21,8 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
-              <Route path="/"              element={<Placeholder title="Dashboard" />} />
-              <Route path="/applications"  element={<Placeholder title="Applications" />} />
+              <Route path="/"              element={<Dashboard />} />
+              <Route path="/applications"  element={<Applications />} />
               <Route path="/applications/:id" element={<Placeholder title="Application Detail" />} />
               <Route path="/networking"    element={<Placeholder title="Networking" />} />
               <Route path="/recent-hires"  element={<Placeholder title="Recent Hires" />} />
