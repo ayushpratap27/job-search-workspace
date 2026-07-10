@@ -22,63 +22,64 @@ export default function Login() {
       login(data.data.userId, data.data.accessToken, data.data.refreshToken)
       navigate('/', { replace: true })
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Invalid email or password'
-      setError(message)
+      setError(err instanceof Error ? err.message : 'Invalid email or password')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm bg-white rounded-xl shadow p-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Job Search Workspace</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
+    <div className="min-h-screen bg-canvas flex items-center justify-center">
+      {/* M stripe at top */}
+      <div className="fixed top-0 left-0 right-0 m-stripe" />
+
+      <div className="w-full max-w-sm px-8">
+        {/* Wordmark */}
+        <div className="mb-10 text-center">
+          <p className="text-[11px] font-bold uppercase tracking-[3px] text-muted mb-2">
+            BMW M
+          </p>
+          <h1 className="text-2xl font-bold uppercase tracking-wide text-on-dark">
+            Job Search Workspace
+          </h1>
+          <p className="text-sm text-muted mt-2 font-light">Sign in to continue</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
+            <label className="label-m block mb-2">Email</label>
             <input
-              id="email"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-m"
               placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
+            <label className="label-m block mb-2">Password</label>
             <input
-              id="password"
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-m"
               placeholder="••••••••"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-[#e22718] text-xs uppercase tracking-wider">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="btn-m btn-m-primary w-full mt-2"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
       </div>

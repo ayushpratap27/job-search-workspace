@@ -1,8 +1,9 @@
 export default function Placeholder({ title }: { title: string }) {
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold text-gray-800">{title}</h1>
-      <p className="text-gray-500 mt-2">Coming soon…</p>
+      <p className="label-m mb-2">Job Search Workspace</p>
+      <h1 className="text-2xl font-bold uppercase tracking-wide text-on-dark">{title}</h1>
+      <p className="text-muted text-sm mt-2 font-light">Coming soon…</p>
     </div>
   )
 }
