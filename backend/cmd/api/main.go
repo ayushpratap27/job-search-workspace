@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ayushpratap27/job-search-workspace/backend/internal/auth"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/config"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/db"
 )
@@ -41,12 +42,23 @@ func main() {
 
 	r := gin.Default()
 
+	// Auth service
+	authSvc := auth.NewService(cfg.JWTSecret, cfg.JWTAccessTTLMinutes, cfg.JWTRefreshTTLDays, redisClient)
+
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
 	api := r.Group("/api/v1")
-	_ = api // routes will be registered here as features are added
+
+	// Public auth routes
+	authHandler := auth.NewHandler(authSvc, pool)
+	authHandler.RegisterRoutes(api.Group("/auth"))
+
+	// Protected routes — all routes below require a valid JWT
+	protected := api.Group("")
+	protected.Use(auth.Middleware(authSvc))
+	_ = protected // additional route groups will be registered here
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.Port,
