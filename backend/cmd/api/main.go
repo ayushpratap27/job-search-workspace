@@ -22,6 +22,7 @@ import (
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/notifications"
 	recenthires "github.com/ayushpratap27/job-search-workspace/backend/internal/recent_hires"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/sessions"
+	"github.com/ayushpratap27/job-search-workspace/backend/internal/settings"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/ws"
 )
 
@@ -111,6 +112,7 @@ func main() {
 		networking.NewHandler(appRepo).RegisterRoutes(protected.Group("/networking"))
 		dashboard.NewHandler(dashRepo).RegisterRoutes(protected.Group("/dashboard"))
 		notifications.NewHandler(notifSvc).RegisterRoutes(protected.Group("/notifications"))
+		settings.NewHandler(settings.NewRepository(pool)).RegisterRoutes(protected.Group("/settings"))
 
 		if redisClient != nil {
 			automation.NewHandler(sessionRepo, redisClient, pool, aiProvider).RegisterRoutes(protected.Group("/automation"))

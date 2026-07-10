@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AppLayout from '@/components/layout/AppLayout'
 import ProtectedRoute from '@/components/ProtectedRoute'
-import Placeholder from '@/components/Placeholder'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Applications from '@/pages/Applications'
@@ -10,6 +9,7 @@ import ApplicationDetail from '@/pages/ApplicationDetail'
 import Networking from '@/pages/Networking'
 import RecentHires from '@/pages/RecentHires'
 import Notifications from '@/pages/Notifications'
+import Settings from '@/pages/Settings'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,7 +31,7 @@ export default function App() {
               <Route path="/networking"    element={<Networking />} />
               <Route path="/recent-hires"  element={<RecentHires />} />
               <Route path="/notifications" element={<Notifications />} />
-              <Route path="/settings"      element={<Placeholder title="Settings" />} />
+              <Route path="/settings"      element={<Settings />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
