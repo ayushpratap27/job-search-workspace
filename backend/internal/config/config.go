@@ -1,7 +1,9 @@
 package config
 
 import (
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -51,4 +53,30 @@ func Load() *Config {
 	}
 
 	return cfg
+}
+
+// Validate checks that all required fields are set.
+// Call this during startup to fail fast with a clear error instead of
+// crashing silently on the first DB or auth operation.
+func (c *Config) Validate(requireDB bool) error {
+	var missing []string
+
+	if c.JWTSecret == "" {
+		missing = append(missing, "JWT_SECRET")
+	}
+
+	if requireDB {
+		if c.DatabaseURL == "" {
+			missing = append(missing, "DATABASE_URL")
+		}
+		if c.RedisAddr == "" {
+			missing = append(missing, "REDIS_ADDR")
+		}
+	}
+
+	if len(missing) > 0 {
+		return fmt.Errorf("missing required environment variables: %s — copy backend/.env.example to backend/.env and fill in the values",
+			strings.Join(missing, ", "))
+	}
+	return nil
 }

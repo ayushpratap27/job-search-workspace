@@ -55,7 +55,13 @@ func NewBridge(
 }
 
 // Start subscribes to all automation event channels and processes them.
+// Guards against nil repos — if the DB pool was unavailable at startup,
+// the bridge skips listening rather than panicking on first DB call.
 func (b *Bridge) Start() {
+	if b.appRepo == nil || b.companyRepo == nil || b.sessionRepo == nil || b.hireRepo == nil || b.notifSvc == nil {
+		log.Println("[bridge] skipping start — one or more repositories are nil (DB unavailable?)")
+		return
+	}
 	go b.listen()
 }
 
@@ -73,6 +79,7 @@ func (b *Bridge) listen() {
 			userID = msg.Channel[len("automation:events:"):]
 		}
 		if userID == "" {
+			log.Printf("[bridge] dropping event from malformed channel: %q", msg.Channel)
 			continue
 		}
 

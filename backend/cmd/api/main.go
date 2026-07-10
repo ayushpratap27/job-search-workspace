@@ -29,6 +29,12 @@ import (
 func main() {
 	cfg := config.Load()
 
+	// Validate required config — warn but don't crash (DB may be unavailable
+	// during development before Docker is started).
+	if err := cfg.Validate(false); err != nil {
+		log.Printf("warning: %v", err)
+	}
+
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}

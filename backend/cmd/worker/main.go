@@ -19,6 +19,11 @@ import (
 func main() {
 	cfg := config.Load()
 
+	// Worker requires DB and Redis — fail fast with a clear error.
+	if err := cfg.Validate(true); err != nil {
+		log.Fatalf("worker: %v", err)
+	}
+
 	// DB + Redis connections
 	pool, err := db.NewPostgresPool(cfg.DatabaseURL)
 	if err != nil {
