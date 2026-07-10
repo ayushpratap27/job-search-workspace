@@ -10,6 +10,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/ai"
+	"github.com/ayushpratap27/job-search-workspace/backend/internal/email"
 )
 
 const TypeDailySummary = "task:daily_summary"
@@ -29,12 +30,14 @@ func NewDailySummaryTask(userID string) (*asynq.Task, error) {
 // DailySummaryHandler compiles today's stats and stores the summary.
 // Email sending and AI generation will be added in Phase 8 & 9.
 type DailySummaryHandler struct {
-	pool *pgxpool.Pool
-	ai   ai.Provider
+	pool      *pgxpool.Pool
+	ai        ai.Provider
+	emailClient *email.Client
+	recipient string
 }
 
-func NewDailySummaryHandler(pool *pgxpool.Pool, aiProvider ai.Provider) *DailySummaryHandler {
-	return &DailySummaryHandler{pool: pool, ai: aiProvider}
+func NewDailySummaryHandler(pool *pgxpool.Pool, aiProvider ai.Provider, emailClient *email.Client, recipient string) *DailySummaryHandler {
+	return &DailySummaryHandler{pool: pool, ai: aiProvider, emailClient: emailClient, recipient: recipient}
 }
 
 func (h *DailySummaryHandler) ProcessTask(ctx context.Context, t *asynq.Task) error {
@@ -105,5 +108,33 @@ func (h *DailySummaryHandler) ProcessTask(ctx context.Context, t *asynq.Task) er
 	}
 
 	log.Printf("[worker] daily summary saved: applied=%d skipped=%d attention=%d", applied, skipped, attention)
+
+	// Build and send email if SMTP is configured
+	summaryData, err := email.BuildSummaryData(ctx, h.pool, p.UserID, aiSummary)
+	if err != nil {
+		log.Printf("[worker] build summary data: %v", err)
+		return nil
+	}
+
+	htmlBody, err := email.RenderSummaryHTML(summaryData)
+	if err != nil {
+		log.Printf("[worker] render summary html: %v", err)
+		return nil
+	}
+
+	if h.recipient != "" && h.emailClient != nil {
+		subject := fmt.Sprintf("Job Search Summary — %s", today)
+		if err := h.emailClient.Send(h.recipient, subject, htmlBody); err != nil {
+			log.Printf("[worker] send email: %v", err)
+		} else {
+			// Mark email sent
+			_, _ = h.pool.Exec(ctx,
+				`UPDATE daily_summaries SET email_sent_at = $1 WHERE user_id = $2 AND date = $3`,
+				time.Now(), p.UserID, today,
+			)
+			log.Printf("[worker] daily summary email sent to %s", h.recipient)
+		}
+	}
+
 	return nil
 }
