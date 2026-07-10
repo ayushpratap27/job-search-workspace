@@ -1,6 +1,6 @@
 import { Play, Pause, Loader2, AlertCircle } from 'lucide-react'
 import { useAutomationStore } from '@/store/automationStore'
-import { useStartAutomation, usePauseAutomation } from '@/hooks/useAutomation'
+import { useStartAutomation, usePauseAutomation, useResumeAutomation } from '@/hooks/useAutomation'
 
 export default function AutomationStatusBar() {
   const store = useAutomationStore()
@@ -53,9 +53,18 @@ export default function AutomationStatusBar() {
 
 export function InterventionCard() {
   const store = useAutomationStore()
-  const resumeMutation = usePauseAutomation() // reuses same pattern
+  const resumeMutation = useResumeAutomation() // Bug #2 fix: was usePauseAutomation
 
   if (!store.interventionPending) return null
+
+  function handleResume() {
+    if (store.sessionId) {
+      resumeMutation.mutate(store.sessionId)
+    } else {
+      // sessionId unknown — just update local state and let user try again
+      store.setResumed()
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -81,16 +90,11 @@ export function InterventionCard() {
 
         <div className="flex gap-3">
           <button
-            onClick={() => {
-              if (store.sessionId) {
-                // resume is handled by useResumeAutomation in the real flow
-                store.setResumed()
-              }
-              resumeMutation.mutate()
-            }}
-            className="flex-1 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={handleResume}
+            disabled={resumeMutation.isPending}
+            className="flex-1 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            I've completed it — Resume
+            {resumeMutation.isPending ? 'Resuming…' : "I've completed it — Resume"}
           </button>
           <button
             onClick={store.reset}

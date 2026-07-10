@@ -25,8 +25,8 @@ type automationEvent struct {
 
 // Bridge subscribes to automation:events:* and routes events to the WS hub and DB.
 type Bridge struct {
-	redis     *redis.Client
-	hub       *ws.Hub
+	redis       *redis.Client
+	hub         *ws.Hub
 	sessionRepo *sessions.Repository
 	companyRepo *companies.Repository
 	appRepo     *applications.Repository
@@ -94,7 +94,14 @@ func (b *Bridge) handleEvent(userID string, event automationEvent) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	switch event.Type {
+	// Automation service publishes events with "automation:" prefix.
+	// Strip prefix for internal switch so both styles are handled uniformly.
+	eventType := event.Type
+	if len(eventType) > 11 && eventType[:11] == "automation:" {
+		eventType = eventType[11:]
+	}
+
+	switch eventType {
 	case "job_applied":
 		b.onJobApplied(ctx, userID, event)
 	case "job_skipped":
@@ -103,24 +110,25 @@ func (b *Bridge) handleEvent(userID string, event automationEvent) {
 		b.onRecentHires(ctx, event)
 	case "needs_attention":
 		b.onNeedsAttention(ctx, userID, event)
-	case "session_done":
-		b.onSessionDone(ctx, event)
-	case "session_error":
+	case "completed":
+		b.onSessionDone(ctx, userID, event)
+	case "error":
 		b.onSessionError(ctx, userID, event)
 	}
 }
 
 func (b *Bridge) onJobApplied(ctx context.Context, userID string, event automationEvent) {
 	var d struct {
-		JobURL            string  `json:"jobUrl"`
-		Company           string  `json:"company"`
-		Role              string  `json:"role"`
-		Location          string  `json:"location"`
+		JobURL             string  `json:"jobUrl"`
+		Company            string  `json:"company"`
+		Role               string  `json:"role"`
+		Location           string  `json:"location"`
 		CompanyLinkedInURL *string `json:"companyLinkedInUrl"`
-		CareerPageURL     *string `json:"careerPageUrl"`
-		Priority          int     `json:"priority"`
+		CareerPageURL      *string `json:"careerPageUrl"`
+		Priority           int     `json:"priority"`
 	}
 	if err := json.Unmarshal(event.Data, &d); err != nil {
+		log.Printf("[bridge] onJobApplied unmarshal: %v", err)
 		return
 	}
 
@@ -147,27 +155,33 @@ func (b *Bridge) onJobApplied(ctx context.Context, userID string, event automati
 	)
 	var appID string
 	if err := row.Scan(&appID); err != nil {
-		return // conflict = already exists
+		return // conflict = already exists, not an error
 	}
 
-	_ = b.appRepo.AddTimelineEvent(ctx, appID, "applied", map[string]any{"sessionId": event.SessionID})
-	_ = b.sessionRepo.IncrementStat(ctx, event.SessionID, "jobs_applied")
+	if err := b.appRepo.AddTimelineEvent(ctx, appID, "applied", map[string]any{"sessionId": event.SessionID}); err != nil {
+		log.Printf("[bridge] add timeline event: %v", err)
+	}
+	if err := b.sessionRepo.IncrementStat(ctx, event.SessionID, "jobs_applied"); err != nil {
+		log.Printf("[bridge] increment jobs_applied: %v", err)
+	}
 }
 
 func (b *Bridge) onJobSkipped(ctx context.Context, userID string, event automationEvent) {
 	var d struct {
-		JobURL  string  `json:"jobUrl"`
-		Company string  `json:"company"`
-		Role    string  `json:"role"`
-		Reason  string  `json:"reason"`
+		JobURL             string  `json:"jobUrl"`
+		Company            string  `json:"company"`
+		Role               string  `json:"role"`
+		Reason             string  `json:"reason"`
 		CompanyLinkedInURL *string `json:"companyLinkedInUrl"`
 	}
 	if err := json.Unmarshal(event.Data, &d); err != nil {
+		log.Printf("[bridge] onJobSkipped unmarshal: %v", err)
 		return
 	}
 
 	company, err := b.companyRepo.FindOrCreate(ctx, d.Company, d.CompanyLinkedInURL)
 	if err != nil {
+		log.Printf("[bridge] company find/create (skip): %v", err)
 		return
 	}
 
@@ -183,7 +197,9 @@ func (b *Bridge) onJobSkipped(ctx context.Context, userID string, event automati
 	if err := row.Scan(&appID); err != nil {
 		return
 	}
-	_ = b.sessionRepo.IncrementStat(ctx, event.SessionID, "jobs_skipped")
+	if err := b.sessionRepo.IncrementStat(ctx, event.SessionID, "jobs_skipped"); err != nil {
+		log.Printf("[bridge] increment jobs_skipped: %v", err)
+	}
 }
 
 func (b *Bridge) onRecentHires(ctx context.Context, event automationEvent) {
@@ -229,23 +245,37 @@ func (b *Bridge) onNeedsAttention(ctx context.Context, userID string, event auto
 	}
 	_ = json.Unmarshal(event.Data, &d)
 
-	_ = b.sessionRepo.UpdateStatus(ctx, event.SessionID, "paused")
+	if err := b.sessionRepo.UpdateStatus(ctx, event.SessionID, "paused"); err != nil {
+		log.Printf("[bridge] pause session: %v", err)
+	}
 
 	title := "Action Required"
 	msg := fmt.Sprintf("Automation paused: %s", d.Reason)
 	if d.Message != "" {
 		msg = d.Message
 	}
-	_ = b.notifSvc.Create(ctx, userID, "intervention_"+d.Reason, title, msg,
-		map[string]any{"sessionId": event.SessionID, "reason": d.Reason})
+	if err := b.notifSvc.Create(ctx, userID, "intervention_"+d.Reason, title, msg,
+		map[string]any{"sessionId": event.SessionID, "reason": d.Reason}); err != nil {
+		log.Printf("[bridge] create notification: %v", err)
+	}
 }
 
-func (b *Bridge) onSessionDone(ctx context.Context, event automationEvent) {
-	_ = b.sessionRepo.UpdateStatus(ctx, event.SessionID, "completed")
+// Bug #3 fix: release Redis session lock so user can start a new session.
+func (b *Bridge) onSessionDone(ctx context.Context, userID string, event automationEvent) {
+	if err := b.sessionRepo.UpdateStatus(ctx, event.SessionID, "completed"); err != nil {
+		log.Printf("[bridge] complete session: %v", err)
+	}
+	b.redis.Del(ctx, "automation:session_lock:"+userID)
+	log.Printf("[bridge] session %s completed, lock released", event.SessionID)
 }
 
 func (b *Bridge) onSessionError(ctx context.Context, userID string, event automationEvent) {
-	_ = b.sessionRepo.UpdateStatus(ctx, event.SessionID, "failed")
-	_ = b.notifSvc.Create(ctx, userID, "session_error", "Automation Error",
-		"The automation session encountered an error and stopped.", map[string]any{"sessionId": event.SessionID})
+	if err := b.sessionRepo.UpdateStatus(ctx, event.SessionID, "failed"); err != nil {
+		log.Printf("[bridge] fail session: %v", err)
+	}
+	b.redis.Del(ctx, "automation:session_lock:"+userID)
+	if err := b.notifSvc.Create(ctx, userID, "session_error", "Automation Error",
+		"The automation session encountered an error and stopped.", map[string]any{"sessionId": event.SessionID}); err != nil {
+		log.Printf("[bridge] create error notification: %v", err)
+	}
 }

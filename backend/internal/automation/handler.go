@@ -42,6 +42,10 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 
 // POST /automation/start
 func (h *Handler) start(c *gin.Context) {
+	if h.redis == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"success": false, "error": gin.H{"code": "SERVICE_UNAVAILABLE", "message": "Redis is not available — start Docker and restart"}})
+		return
+	}
 	userID := auth.GetUserID(c)
 	ctx := c.Request.Context()
 

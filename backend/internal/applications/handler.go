@@ -92,6 +92,17 @@ func (h *Handler) update(c *gin.Context) {
 		}
 	}
 
+	// Bug #9 fix: validate applicationStatus
+	if req.ApplicationStatus != nil {
+		valid := map[string]bool{
+			"completed": true, "needs_attention": true, "skipped": true,
+		}
+		if !valid[*req.ApplicationStatus] {
+			response.BadRequest(c, "invalid applicationStatus value")
+			return
+		}
+	}
+
 	err := h.repo.Update(c.Request.Context(), c.Param("id"), userID, UpdateParams{
 		Notes:             req.Notes,
 		NetworkingStatus:  req.NetworkingStatus,

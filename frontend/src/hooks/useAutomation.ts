@@ -15,7 +15,8 @@ export function useAutomationSocket() {
   useEffect(() => {
     if (!accessToken) return
 
-    wsClient.connect(accessToken)
+    // Bug #6 fix: pass a getter so reconnect always reads the latest token from localStorage
+    wsClient.connect(() => localStorage.getItem('access_token'))
 
     const off = wsClient.on((event: AutomationEvent) => {
       switch (event.type) {

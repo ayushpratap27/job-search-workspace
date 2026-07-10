@@ -114,9 +114,9 @@ func main() {
 		notifications.NewHandler(notifSvc).RegisterRoutes(protected.Group("/notifications"))
 		settings.NewHandler(settings.NewRepository(pool)).RegisterRoutes(protected.Group("/settings"))
 
-		if redisClient != nil {
-			automation.NewHandler(sessionRepo, redisClient, pool, aiProvider).RegisterRoutes(protected.Group("/automation"))
-		}
+		// Bug #8 fix: register automation routes regardless of Redis state;
+		// handler methods return 503 gracefully if Redis is unavailable.
+		automation.NewHandler(sessionRepo, redisClient, pool, aiProvider).RegisterRoutes(protected.Group("/automation"))
 
 		_ = notifSvc // used above for notifications handler and bridge
 	} else {

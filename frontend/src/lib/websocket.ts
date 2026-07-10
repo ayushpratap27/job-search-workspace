@@ -13,10 +13,14 @@ class WebSocketClient {
   private reconnectDelay = 1000
   private maxDelay = 30_000
   private shouldConnect = false
+  // Bug #6 fix: store token so reconnect always uses the latest value
+  private getToken: (() => string | null) | null = null
 
-  connect(token: string) {
+  connect(getToken: () => string | null) {
     this.shouldConnect = true
-    this.open(token)
+    this.getToken = getToken
+    const token = getToken()
+    if (token) this.open(token)
   }
 
   private open(token: string) {
@@ -40,7 +44,11 @@ class WebSocketClient {
     this.ws.onclose = () => {
       if (!this.shouldConnect) return
       console.log(`[ws] disconnected — reconnecting in ${this.reconnectDelay}ms`)
-      setTimeout(() => this.open(token), this.reconnectDelay)
+      setTimeout(() => {
+        // Always fetch the latest token on reconnect (may have been refreshed)
+        const freshToken = this.getToken?.()
+        if (freshToken) this.open(freshToken)
+      }, this.reconnectDelay)
       this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxDelay)
     }
 

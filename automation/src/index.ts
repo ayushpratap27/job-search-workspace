@@ -172,7 +172,7 @@ async function runSession(userId: string, command: AutomationCommand): Promise<v
       const hires = await provider.collectRecentHires(job).catch(() => [])
       if (hires.length > 0) {
         await publishEvent(userId, {
-          type: 'recent_hires',
+          type: 'automation:recent_hires',
           sessionId: command.sessionId,
           data: { applicationJobUrl: job.jobUrl, hires },
         })
@@ -210,10 +210,11 @@ async function resumeSession(userId: string, command: AutomationCommand): Promis
 
   console.log(`[automation] resuming from job index ${checkpoint.currentIndex}`)
 
-  // Build a command that continues from the checkpoint
+  // Build an explicit resume command — do not spread to avoid field confusion
   const resumeCommand: AutomationCommand = {
-    ...command,
-    // Skip to the checkpoint index by slicing the job list
+    cmd: 'start',
+    sessionId: command.sessionId,
+    userId: command.userId,
     config: {
       ...(command.config as JobSearchConfig),
       _resumeJobUrls: checkpoint.jobUrls.slice(checkpoint.currentIndex),
