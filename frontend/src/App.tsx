@@ -7,6 +7,9 @@ import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Applications from '@/pages/Applications'
 import ApplicationDetail from '@/pages/ApplicationDetail'
+import Networking from '@/pages/Networking'
+import RecentHires from '@/pages/RecentHires'
+import Notifications from '@/pages/Notifications'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,9 +28,9 @@ export default function App() {
               <Route path="/"              element={<Dashboard />} />
               <Route path="/applications"  element={<Applications />} />
               <Route path="/applications/:id" element={<ApplicationDetail />} />
-              <Route path="/networking"    element={<Placeholder title="Networking" />} />
-              <Route path="/recent-hires"  element={<Placeholder title="Recent Hires" />} />
-              <Route path="/notifications" element={<Placeholder title="Notifications" />} />
+              <Route path="/networking"    element={<Networking />} />
+              <Route path="/recent-hires"  element={<RecentHires />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/settings"      element={<Placeholder title="Settings" />} />
             </Route>
           </Route>
