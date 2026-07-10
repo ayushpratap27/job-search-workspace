@@ -10,19 +10,12 @@ export interface JobSearchConfig {
   maxJobs: number
   filters: Record<string, unknown>
   priorityOrder: string[]
+  /** Internal: set by resume flow to continue from a specific job list */
+  _resumeJobUrls?: string[]
 }
 
 export interface AutomationEvent {
-  type:
-    | 'job_found'
-    | 'job_applying'
-    | 'job_applied'
-    | 'job_skipped'
-    | 'recent_hires'
-    | 'needs_attention'
-    | 'session_done'
-    | 'session_error'
-    | 'resumed'
+  type: string
   sessionId: string
   data: Record<string, unknown>
   timestamp: string
