@@ -3,22 +3,18 @@ import { Settings as SettingsIcon, Save, Plus, X } from 'lucide-react'
 import { useSettings, useUpdateSearchConfig } from '@/hooks/useSettings'
 
 const AI_PROVIDERS = [
-  { value: 'none', label: 'None (use synonym map)' },
-  { value: 'openai', label: 'OpenAI (gpt-4o-mini)' },
-  { value: 'gemini', label: 'Google Gemini (gemini-1.5-flash)' },
+  { value: 'none', label: 'None (synonym map fallback)' },
+  { value: 'openai', label: 'OpenAI — gpt-4o-mini' },
+  { value: 'gemini', label: 'Google Gemini — gemini-1.5-flash' },
 ]
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-4">
-      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</h2>
+    <div className="card-m space-y-4">
+      <p className="label-m border-b border-hairline pb-2">{title}</p>
       {children}
     </div>
   )
-}
-
-function Label({ children }: { children: React.ReactNode }) {
-  return <label className="block text-sm font-medium text-gray-700 mb-1">{children}</label>
 }
 
 export default function Settings() {
@@ -49,14 +45,7 @@ export default function Settings() {
 
   function addKeyword() {
     const kw = newKeyword.trim()
-    if (kw && !keywords.includes(kw)) {
-      setKeywords(k => [...k, kw])
-      setNewKeyword('')
-    }
-  }
-
-  function removeKeyword(kw: string) {
-    setKeywords(k => k.filter(x => x !== kw))
+    if (kw && !keywords.includes(kw)) { setKeywords(k => [...k, kw]); setNewKeyword('') }
   }
 
   function handleSave() {
@@ -67,114 +56,107 @@ export default function Settings() {
       summaryTime,
       maxJobsPerSession: maxJobs,
       aiProvider,
-    }, {
-      onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 2000) },
-    })
+    }, { onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 2000) } })
   }
 
   if (isLoading) {
     return (
       <div className="p-8 animate-pulse space-y-4">
-        <div className="h-8 bg-gray-200 rounded w-32" />
-        <div className="h-48 bg-gray-200 rounded-xl" />
+        <div className="h-8 bg-surface-card w-32" />
+        <div className="h-48 bg-surface-card" />
       </div>
     )
   }
 
   return (
     <div className="p-8 space-y-6 max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-        <SettingsIcon size={24} className="text-blue-600" />
-        Settings
-      </h1>
+      <div className="border-b border-hairline pb-5">
+        <p className="label-m mb-1 flex items-center gap-2"><SettingsIcon size={11} /> Configuration</p>
+        <h1 className="text-2xl font-bold uppercase tracking-wide text-on-dark">Settings</h1>
+      </div>
 
       <Section title="Job Search Keywords">
-        <p className="text-xs text-gray-500">Base keywords — AI expands these with related titles before each session.</p>
+        <p className="text-xs text-muted font-light">Base keywords — AI expands these with related titles before each session.</p>
         <div className="flex flex-wrap gap-2">
           {keywords.map(kw => (
-            <span key={kw} className="flex items-center gap-1.5 bg-blue-50 text-blue-700 text-sm px-3 py-1 rounded-full">
+            <span key={kw} className="flex items-center gap-1.5 bg-surface-elevated border border-hairline text-body text-[11px] uppercase tracking-wider px-2 py-1">
               {kw}
-              <button onClick={() => removeKeyword(kw)} className="hover:text-red-500"><X size={12} /></button>
+              <button onClick={() => setKeywords(k => k.filter(x => x !== kw))}
+                className="text-muted hover:text-[#e22718] transition-colors"><X size={10} /></button>
             </span>
           ))}
         </div>
         <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Add keyword (press Enter)"
-            value={newKeyword}
-            onChange={e => setNewKeyword(e.target.value)}
+          <input type="text" placeholder="Add keyword (press Enter)"
+            value={newKeyword} onChange={e => setNewKeyword(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addKeyword()}
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button onClick={addKeyword} className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            <Plus size={16} />
-          </button>
+            className="input-m flex-1 text-xs" />
+          <button onClick={addKeyword} className="btn-m btn-m-primary py-2 px-4"><Plus size={13} /></button>
         </div>
       </Section>
 
       <Section title="Search Filters">
         <div className="space-y-3">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={easyApplyOnly} onChange={e => setEasyApplyOnly(e.target.checked)} className="w-4 h-4 rounded text-blue-600" />
-            <span className="text-sm text-gray-700">Easy Apply only</span>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={under10} onChange={e => setUnder10(e.target.checked)} className="w-4 h-4 rounded text-blue-600" />
-            <span className="text-sm text-gray-700">Under 10 applicants only</span>
-          </label>
+          {[
+            { checked: easyApplyOnly, setter: setEasyApplyOnly, label: 'Easy Apply only' },
+            { checked: under10, setter: setUnder10, label: 'Under 10 applicants only' },
+          ].map(({ checked, setter, label }) => (
+            <label key={label} className="flex items-center gap-3 cursor-pointer group">
+              <div
+                onClick={() => setter(!checked)}
+                className={`w-4 h-4 border flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors ${checked ? 'bg-m-blue-dark border-m-blue-dark' : 'border-hairline'}`}
+              >
+                {checked && <span className="text-white text-[8px] font-bold">✓</span>}
+              </div>
+              <span className="text-xs text-body uppercase tracking-wider group-hover:text-on-dark transition-colors">{label}</span>
+            </label>
+          ))}
         </div>
       </Section>
 
       <Section title="Schedule">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label>Morning search time</Label>
-            <input type="time" value={searchTime} onChange={e => setSearchTime(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <p className="label-m mb-2">Morning search time</p>
+            <input type="time" value={searchTime} onChange={e => setSearchTime(e.target.value)} className="input-m" />
           </div>
           <div>
-            <Label>Daily summary email time</Label>
-            <input type="time" value={summaryTime} onChange={e => setSummaryTime(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <p className="label-m mb-2">Daily summary time</p>
+            <input type="time" value={summaryTime} onChange={e => setSummaryTime(e.target.value)} className="input-m" />
           </div>
         </div>
         <div>
-          <Label>Max jobs per session</Label>
-          <input type="number" min={1} max={200} value={maxJobs} onChange={e => setMaxJobs(Number(e.target.value))}
-            className="w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <p className="label-m mb-2">Max jobs per session</p>
+          <input type="number" min={1} max={200} value={maxJobs}
+            onChange={e => setMaxJobs(Number(e.target.value))} className="input-m w-28 text-center" />
         </div>
       </Section>
 
       <Section title="AI Provider">
-        <p className="text-xs text-gray-500">Set <code className="bg-gray-100 px-1 rounded">OPENAI_API_KEY</code> or <code className="bg-gray-100 px-1 rounded">GEMINI_API_KEY</code> in <code className="bg-gray-100 px-1 rounded">backend/.env</code> to enable AI.</p>
-        <select value={aiProvider} onChange={e => setAiProvider(e.target.value)}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <p className="text-xs text-muted font-light">
+          Set <code className="bg-surface-elevated px-1 text-body-strong text-[11px]">OPENAI_API_KEY</code> or{' '}
+          <code className="bg-surface-elevated px-1 text-body-strong text-[11px]">GEMINI_API_KEY</code> in <code className="bg-surface-elevated px-1 text-body-strong text-[11px]">backend/.env</code>.
+        </p>
+        <select value={aiProvider} onChange={e => setAiProvider(e.target.value)} className="select-m w-full">
           {AI_PROVIDERS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
       </Section>
 
-      <Section title="Email (SMTP)">
-        <p className="text-sm text-gray-500">
-          SMTP settings are configured via environment variables in{' '}
-          <code className="bg-gray-100 px-1 rounded text-xs">backend/.env</code>.
-        </p>
-        <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 space-y-1 font-mono">
+      <Section title="Email / SMTP">
+        <p className="text-xs text-muted font-light">SMTP settings are configured via environment variables in <code className="bg-surface-elevated px-1 text-body-strong text-[11px]">backend/.env</code>.</p>
+        <div className="bg-surface-elevated border border-hairline p-3 font-mono text-[11px] text-muted space-y-1">
           <p>SMTP_HOST · SMTP_PORT · SMTP_USER</p>
           <p>SMTP_PASSWORD · SMTP_FROM · SUMMARY_RECIPIENT_EMAIL</p>
         </div>
       </Section>
 
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          disabled={updateMutation.isPending}
-          className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
-          <Save size={15} />
-          {updateMutation.isPending ? 'Saving…' : 'Save Settings'}
+      <div className="flex items-center gap-4 pt-2">
+        <button onClick={handleSave} disabled={updateMutation.isPending}
+          className="btn-m btn-m-primary flex items-center gap-2">
+          <Save size={13} />
+          {updateMutation.isPending ? 'Saving...' : 'Save Settings'}
         </button>
-        {saved && <span className="text-sm text-green-600 font-medium">Saved!</span>}
+        {saved && <span className="text-[#0fa336] text-[11px] uppercase tracking-wider font-bold">Saved</span>}
       </div>
     </div>
   )

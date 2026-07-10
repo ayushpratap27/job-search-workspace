@@ -1,61 +1,48 @@
 import type { ApplicationStatus, NetworkingStatus } from '@/types'
 
-const APP_STATUS: Record<ApplicationStatus, string> = {
-  completed:       'bg-green-100 text-green-700',
-  needs_attention: 'bg-orange-100 text-orange-700',
-  skipped:         'bg-gray-100 text-gray-500',
+const APP_STATUS: Record<ApplicationStatus, { bg: string; text: string; label: string }> = {
+  completed:       { bg: 'bg-[#0fa336]/15', text: 'text-[#0fa336]', label: 'Applied' },
+  needs_attention: { bg: 'bg-[#f4b400]/15', text: 'text-[#f4b400]', label: 'Needs Attention' },
+  skipped:         { bg: 'bg-[#262626]',    text: 'text-[#7e7e7e]', label: 'Skipped' },
 }
 
-const APP_STATUS_LABELS: Record<ApplicationStatus, string> = {
-  completed:       'Applied',
-  needs_attention: 'Needs Attention',
-  skipped:         'Skipped',
+const NET_STATUS: Record<NetworkingStatus, { bg: string; text: string; label: string }> = {
+  pending:           { bg: 'bg-[#1c69d4]/15', text: 'text-[#1c69d4]', label: 'Pending' },
+  completed:         { bg: 'bg-[#0fa336]/15', text: 'text-[#0fa336]', label: 'Completed' },
+  replied:           { bg: 'bg-[#9333ea]/15', text: 'text-[#a855f7]', label: 'Replied' },
+  referral_received: { bg: 'bg-[#0066b1]/15', text: 'text-[#0066b1]', label: 'Referral' },
+  resume_received:   { bg: 'bg-[#0891b2]/15', text: 'text-[#22d3ee]', label: 'Resume' },
+  ignored:           { bg: 'bg-[#262626]',    text: 'text-[#7e7e7e]', label: 'Ignored' },
 }
 
-const NET_STATUS: Record<NetworkingStatus, string> = {
-  pending:           'bg-blue-100 text-blue-700',
-  completed:         'bg-green-100 text-green-700',
-  replied:           'bg-purple-100 text-purple-700',
-  referral_received: 'bg-indigo-100 text-indigo-700',
-  resume_received:   'bg-teal-100 text-teal-700',
-  ignored:           'bg-gray-100 text-gray-400',
+const PRIORITY_STYLES: Record<number, string> = {
+  1: 'bg-[#1c69d4] text-white',
+  2: 'bg-[#0fa336] text-white',
+  3: 'bg-[#f4b400] text-black',
+  4: 'bg-[#262626] text-[#7e7e7e]',
 }
 
-const NET_STATUS_LABELS: Record<NetworkingStatus, string> = {
-  pending:           'Pending',
-  completed:         'Completed',
-  replied:           'Replied',
-  referral_received: 'Referral',
-  resume_received:   'Resume',
-  ignored:           'Ignored',
-}
-
-const PRIORITY_COLORS: Record<number, string> = {
-  1: 'bg-blue-600 text-white',
-  2: 'bg-green-600 text-white',
-  3: 'bg-yellow-500 text-white',
-  4: 'bg-gray-400 text-white',
+function Badge({ bg, text, label }: { bg: string; text: string; label: string }) {
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[1px] ${bg} ${text}`}>
+      {label}
+    </span>
+  )
 }
 
 export function ApplicationStatusBadge({ status }: { status: ApplicationStatus }) {
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${APP_STATUS[status]}`}>
-      {APP_STATUS_LABELS[status]}
-    </span>
-  )
+  const s = APP_STATUS[status] ?? APP_STATUS.skipped
+  return <Badge {...s} />
 }
 
 export function NetworkingStatusBadge({ status }: { status: NetworkingStatus }) {
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${NET_STATUS[status]}`}>
-      {NET_STATUS_LABELS[status]}
-    </span>
-  )
+  const s = NET_STATUS[status] ?? NET_STATUS.ignored
+  return <Badge {...s} />
 }
 
 export function PriorityBadge({ priority }: { priority: number }) {
   return (
-    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${PRIORITY_COLORS[priority] ?? PRIORITY_COLORS[4]}`}>
+    <span className={`inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold ${PRIORITY_STYLES[priority] ?? PRIORITY_STYLES[4]}`}>
       {priority}
     </span>
   )

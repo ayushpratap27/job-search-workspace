@@ -2,50 +2,54 @@ import { formatDistanceToNow } from 'date-fns'
 import type { TimelineEvent } from '@/types'
 
 const EVENT_LABELS: Record<string, string> = {
-  applied:                 'Applied',
-  recent_hires_collected:  'Recent Hires Collected',
-  networking_pending:      'Networking Pending',
-  networking_updated:      'Networking Updated',
-  interview_scheduled:     'Interview Scheduled',
-  offer:                   'Offer Received',
-  rejected:                'Rejected',
-  needs_attention:         'Needs Attention',
-  resumed:                 'Automation Resumed',
-  note_added:              'Note Added',
+  applied: 'Applied',
+  recent_hires_collected: 'Recent Hires Collected',
+  networking_pending: 'Networking Pending',
+  networking_updated: 'Networking Updated',
+  interview_scheduled: 'Interview Scheduled',
+  offer: 'Offer Received',
+  rejected: 'Rejected',
+  needs_attention: 'Needs Attention',
+  resumed: 'Resumed',
+  note_added: 'Note Added',
 }
 
-const EVENT_COLORS: Record<string, string> = {
-  applied:                 'bg-green-500',
-  recent_hires_collected:  'bg-purple-500',
-  networking_updated:      'bg-blue-500',
-  interview_scheduled:     'bg-indigo-500',
-  offer:                   'bg-emerald-500',
-  rejected:                'bg-red-500',
-  needs_attention:         'bg-orange-500',
+const EVENT_COLOR: Record<string, string> = {
+  applied: '#1c69d4',
+  recent_hires_collected: '#a855f7',
+  networking_updated: '#0066b1',
+  interview_scheduled: '#0891b2',
+  offer: '#0fa336',
+  rejected: '#e22718',
+  needs_attention: '#f4b400',
 }
 
 export default function Timeline({ events }: { events: TimelineEvent[] }) {
   if (events.length === 0) {
-    return <p className="text-sm text-gray-400 py-4">No timeline events yet.</p>
+    return <p className="text-[10px] text-muted uppercase tracking-wider py-4">No timeline events yet.</p>
   }
 
   return (
     <div className="relative">
-      <div className="absolute left-3 top-0 bottom-0 w-px bg-gray-200" />
-      <div className="space-y-5 ml-8">
-        {events.map((e) => (
-          <div key={e.id} className="relative">
-            <div className={`absolute -left-5 top-1 w-2.5 h-2.5 rounded-full border-2 border-white ${EVENT_COLORS[e.eventType] ?? 'bg-gray-400'}`} />
-            <div>
-              <p className="text-sm font-medium text-gray-800">
+      <div className="absolute left-[5px] top-0 bottom-0 w-px bg-hairline" />
+      <div className="space-y-5 ml-6">
+        {events.map((e) => {
+          const color = EVENT_COLOR[e.eventType] ?? '#3c3c3c'
+          return (
+            <div key={e.id} className="relative">
+              <div
+                className="absolute -left-[22px] top-1 w-2.5 h-2.5 border"
+                style={{ borderColor: color, backgroundColor: '#000' }}
+              />
+              <p className="text-xs font-bold uppercase tracking-wider text-body-strong">
                 {EVENT_LABELS[e.eventType] ?? e.eventType}
               </p>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-[10px] text-muted font-light mt-0.5 uppercase tracking-wider">
                 {formatDistanceToNow(new Date(e.createdAt), { addSuffix: true })}
               </p>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

@@ -8,17 +8,10 @@ import Timeline from '@/components/timeline/Timeline'
 import type { ApplicationStatus, NetworkingStatus } from '@/types'
 import { PRIORITY_LABELS } from '@/types'
 
-const NETWORKING_OPTIONS: NetworkingStatus[] = [
-  'pending', 'completed', 'replied', 'referral_received', 'resume_received', 'ignored',
-]
-
+const NETWORKING_OPTIONS: NetworkingStatus[] = ['pending','completed','replied','referral_received','resume_received','ignored']
 const NET_LABELS: Record<NetworkingStatus, string> = {
-  pending:           'Pending',
-  completed:         'Completed',
-  replied:           'Replied',
-  referral_received: 'Referral Received',
-  resume_received:   'Resume Received',
-  ignored:           'Ignored',
+  pending:'Pending', completed:'Completed', replied:'Replied',
+  referral_received:'Referral Received', resume_received:'Resume Received', ignored:'Ignored',
 }
 
 export default function ApplicationDetail() {
@@ -33,56 +26,47 @@ export default function ApplicationDetail() {
 
   if (isLoading) {
     return (
-      <div className="p-8 animate-pulse space-y-4">
-        <div className="h-6 bg-gray-200 rounded w-48" />
-        <div className="h-64 bg-gray-200 rounded-xl" />
+      <div className="p-8 space-y-4 animate-pulse">
+        <div className="h-5 bg-surface-card w-32" />
+        <div className="h-8 bg-surface-card w-64" />
+        <div className="h-64 bg-surface-card" />
       </div>
     )
   }
 
-  if (!app) {
-    return <div className="p-8 text-gray-500">Application not found.</div>
-  }
+  if (!app) return <div className="p-8 text-muted">Application not found.</div>
 
   const hires = hiresData?.data ?? []
-
-  function handleNetworkingChange(status: NetworkingStatus) {
-    updateMutation.mutate({ networkingStatus: status })
-  }
-
-  function handleSaveNotes() {
-    updateMutation.mutate({ notes })
-    setNotesEditing(false)
-  }
 
   return (
     <div className="p-8 space-y-6">
       {/* Back + header */}
       <div>
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 mb-3 transition-colors"
-        >
-          <ArrowLeft size={14} /> Back
+        <button onClick={() => navigate(-1)}
+          className="flex items-center gap-1 label-m hover:text-on-dark mb-4 transition-colors">
+          <ArrowLeft size={11} /> Back
         </button>
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{app.company.name}</h1>
-            <p className="text-gray-600 mt-1">{app.role}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <PriorityBadge priority={app.priority} />
-            <ApplicationStatusBadge status={app.applicationStatus as ApplicationStatus} />
+        <div className="border-b border-hairline pb-5">
+          <p className="label-m mb-1">{app.platform}</p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold uppercase tracking-wide text-on-dark">{app.company.name}</h1>
+              <p className="text-body mt-1 font-light">{app.role}</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <PriorityBadge priority={app.priority} />
+              <ApplicationStatusBadge status={app.applicationStatus as ApplicationStatus} />
+            </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left — company info */}
+        {/* Left */}
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-3">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Details</h2>
-
+          {/* Details */}
+          <div className="card-m space-y-3">
+            <p className="label-m border-b border-hairline pb-2">Details</p>
             <InfoRow label="Location">{app.location ?? '—'}</InfoRow>
             <InfoRow label="Priority">{PRIORITY_LABELS[app.priority]}</InfoRow>
             <InfoRow label="Platform">{app.platform}</InfoRow>
@@ -91,102 +75,83 @@ export default function ApplicationDetail() {
                 {new Date(app.appliedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
               </InfoRow>
             )}
-
-            <div className="pt-2 space-y-2">
+            <div className="pt-1 space-y-2 border-t border-hairline">
               {app.jobUrl && (
                 <a href={app.jobUrl} target="_blank" rel="noreferrer"
-                  className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
-                  <ExternalLink size={13} /> Job Posting
+                  className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-m-blue-dark hover:text-on-dark transition-colors">
+                  <ExternalLink size={11} /> Job Posting
                 </a>
               )}
               {app.company.linkedinUrl && (
                 <a href={app.company.linkedinUrl} target="_blank" rel="noreferrer"
-                  className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
-                  <ExternalLink size={13} /> Company LinkedIn
+                  className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-m-blue-dark hover:text-on-dark transition-colors">
+                  <ExternalLink size={11} /> Company LinkedIn
                 </a>
               )}
               {app.company.careerPageUrl && (
                 <a href={app.company.careerPageUrl} target="_blank" rel="noreferrer"
-                  className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
-                  <ExternalLink size={13} /> Career Page
+                  className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-m-blue-dark hover:text-on-dark transition-colors">
+                  <ExternalLink size={11} /> Career Page
                 </a>
               )}
             </div>
           </div>
 
-          {/* Networking status */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-3">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-              <Users size={13} /> Networking
-            </h2>
-            <div className="mb-2">
-              <NetworkingStatusBadge status={app.networkingStatus as NetworkingStatus} />
-            </div>
+          {/* Networking */}
+          <div className="card-m space-y-3">
+            <p className="label-m border-b border-hairline pb-2 flex items-center gap-2"><Users size={10} /> Networking</p>
+            <div className="mb-2"><NetworkingStatusBadge status={app.networkingStatus as NetworkingStatus} /></div>
             <select
               defaultValue={app.networkingStatus}
-              onChange={(e) => handleNetworkingChange(e.target.value as NetworkingStatus)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => updateMutation.mutate({ networkingStatus: e.target.value })}
+              className="select-m w-full text-xs"
             >
-              {NETWORKING_OPTIONS.map(s => (
-                <option key={s} value={s}>{NET_LABELS[s]}</option>
-              ))}
+              {NETWORKING_OPTIONS.map(s => <option key={s} value={s}>{NET_LABELS[s]}</option>)}
             </select>
           </div>
 
           {/* Notes */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-2">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-              <FileText size={13} /> Notes
-            </h2>
+          <div className="card-m space-y-2">
+            <p className="label-m border-b border-hairline pb-2 flex items-center gap-2"><FileText size={10} /> Notes</p>
             {notesEditing ? (
               <>
-                <textarea
-                  className="w-full border border-gray-200 rounded-lg p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={4}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
+                <textarea className="input-m resize-none text-xs" rows={4}
+                  value={notes} onChange={(e) => setNotes(e.target.value)} />
                 <div className="flex gap-2">
-                  <button onClick={handleSaveNotes}
-                    className="px-3 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">
-                    Save
-                  </button>
+                  <button onClick={() => { updateMutation.mutate({ notes }); setNotesEditing(false) }}
+                    className="btn-m btn-m-primary py-1.5 px-4 text-[11px]">Save</button>
                   <button onClick={() => setNotesEditing(false)}
-                    className="px-3 py-1 border border-gray-200 text-xs rounded-lg hover:bg-gray-50">
-                    Cancel
-                  </button>
+                    className="btn-m btn-m-outline py-1.5 px-4 text-[11px]">Cancel</button>
                 </div>
               </>
             ) : (
-              <div
-                onClick={() => { setNotes(app.notes ?? ''); setNotesEditing(true) }}
-                className="text-sm text-gray-600 cursor-pointer hover:bg-gray-50 rounded p-1 min-h-12"
-              >
-                {app.notes || <span className="text-gray-400 italic">Click to add notes…</span>}
+              <div onClick={() => { setNotes(app.notes ?? ''); setNotesEditing(true) }}
+                className="text-xs text-body cursor-pointer hover:text-body-strong min-h-10 font-light transition-colors">
+                {app.notes || <span className="text-muted italic">Click to add notes...</span>}
               </div>
             )}
           </div>
         </div>
 
-        {/* Right — timeline + recent hires */}
+        {/* Right */}
         <div className="lg:col-span-2 space-y-4">
           {/* Recent hires */}
           {hires.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
-                <Users size={13} /> Recent Hires ({hires.length})
-              </h2>
-              <div className="divide-y divide-gray-50">
+            <div className="card-m">
+              <p className="label-m border-b border-hairline pb-2 mb-3 flex items-center gap-2">
+                <Users size={10} /> Recent Hires ({hires.length})
+              </p>
+              <div className="divide-y divide-hairline">
                 {hires.map(h => (
-                  <div key={h.id} className="py-2.5 flex items-center justify-between">
+                  <div key={h.id} className="py-3 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{h.name}</p>
-                      <p className="text-xs text-gray-400">{h.designation ?? ''}{h.joinedAt ? ` · ${h.joinedAt}` : ''}</p>
+                      <p className="text-sm font-medium text-on-dark">{h.name}</p>
+                      <p className="text-xs text-muted font-light">{h.designation ?? ''}{h.joinedAt ? ` · ${h.joinedAt}` : ''}</p>
                     </div>
                     {h.profileUrl && (
                       <a href={h.profileUrl} target="_blank" rel="noreferrer"
-                        className="text-blue-500 hover:text-blue-700 text-xs flex items-center gap-1">
-                        <ExternalLink size={12} /> LinkedIn
+                        className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-m-blue-dark hover:text-on-dark transition-colors">
+                        <ExternalLink size={11} /> LinkedIn
                       </a>
                     )}
                   </div>
@@ -196,8 +161,8 @@ export default function ApplicationDetail() {
           )}
 
           {/* Timeline */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Timeline</h2>
+          <div className="card-m">
+            <p className="label-m border-b border-hairline pb-2 mb-4">Timeline</p>
             <Timeline events={timeline} />
           </div>
         </div>
@@ -208,9 +173,9 @@ export default function ApplicationDetail() {
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex justify-between text-sm">
-      <span className="text-gray-500">{label}</span>
-      <span className="text-gray-800 font-medium">{children}</span>
+    <div className="flex justify-between text-xs">
+      <span className="text-muted uppercase tracking-wider">{label}</span>
+      <span className="text-body-strong font-medium">{children}</span>
     </div>
   )
 }
