@@ -9,6 +9,7 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/ayushpratap27/job-search-workspace/backend/internal/ai"
 )
 
 const TypeDailySummary = "task:daily_summary"
@@ -29,10 +30,11 @@ func NewDailySummaryTask(userID string) (*asynq.Task, error) {
 // Email sending and AI generation will be added in Phase 8 & 9.
 type DailySummaryHandler struct {
 	pool *pgxpool.Pool
+	ai   ai.Provider
 }
 
-func NewDailySummaryHandler(pool *pgxpool.Pool) *DailySummaryHandler {
-	return &DailySummaryHandler{pool: pool}
+func NewDailySummaryHandler(pool *pgxpool.Pool, aiProvider ai.Provider) *DailySummaryHandler {
+	return &DailySummaryHandler{pool: pool, ai: aiProvider}
 }
 
 func (h *DailySummaryHandler) ProcessTask(ctx context.Context, t *asynq.Task) error {
@@ -88,12 +90,15 @@ func (h *DailySummaryHandler) ProcessTask(ctx context.Context, t *asynq.Task) er
 
 	statsJSON, _ := json.Marshal(stats)
 
+	// Generate AI summary (falls back gracefully)
+	aiSummary, _ := h.ai.GenerateSummary(ctx, stats)
+
 	// Upsert daily_summaries row
 	_, err = h.pool.Exec(ctx, `
-		INSERT INTO daily_summaries (user_id, date, stats)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (user_id, date) DO UPDATE SET stats = EXCLUDED.stats`,
-		p.UserID, today, statsJSON,
+		INSERT INTO daily_summaries (user_id, date, stats, ai_summary)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (user_id, date) DO UPDATE SET stats = EXCLUDED.stats, ai_summary = EXCLUDED.ai_summary`,
+		p.UserID, today, statsJSON, aiSummary,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert summary: %w", err)

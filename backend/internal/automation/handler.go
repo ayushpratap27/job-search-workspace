@@ -10,7 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/ayushpratap27/job-search-workspace/backend/internal/ai"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/auth"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/response"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/sessions"
@@ -22,10 +24,12 @@ const sessionLockTTL = 12 * time.Hour
 type Handler struct {
 	sessionRepo *sessions.Repository
 	redis       *redis.Client
+	pool        *pgxpool.Pool
+	ai          ai.Provider
 }
 
-func NewHandler(sessionRepo *sessions.Repository, redisClient *redis.Client) *Handler {
-	return &Handler{sessionRepo: sessionRepo, redis: redisClient}
+func NewHandler(sessionRepo *sessions.Repository, redisClient *redis.Client, pool *pgxpool.Pool, aiProvider ai.Provider) *Handler {
+	return &Handler{sessionRepo: sessionRepo, redis: redisClient, pool: pool, ai: aiProvider}
 }
 
 func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
@@ -55,6 +59,25 @@ func (h *Handler) start(c *gin.Context) {
 	}
 	_ = c.ShouldBindJSON(&req)
 
+	// Load user's configured keywords and expand with AI
+	var keywordsJSON []byte
+	_ = h.pool.QueryRow(ctx,
+		`SELECT keywords FROM search_configs WHERE user_id = $1 AND is_active = true LIMIT 1`, userID,
+	).Scan(&keywordsJSON)
+
+	var baseKeywords []string
+	if len(keywordsJSON) > 0 {
+		_ = json.Unmarshal(keywordsJSON, &baseKeywords)
+	}
+	if len(baseKeywords) == 0 {
+		baseKeywords = []string{"Software Engineer", "SDE"}
+	}
+
+	expandedKeywords, err := h.ai.ExpandJobTitles(ctx, baseKeywords)
+	if err != nil {
+		expandedKeywords = baseKeywords
+	}
+
 	session, err := h.sessionRepo.Create(ctx, userID, "linkedin")
 	if err != nil {
 		response.Internal(c)
@@ -64,12 +87,12 @@ func (h *Handler) start(c *gin.Context) {
 	// Set Redis lock for the session duration
 	_ = h.redis.Set(ctx, lockKey, session.ID, sessionLockTTL).Err()
 
-	// Publish start command to automation service
+	// Publish start command with expanded keywords
 	cmd := map[string]any{
 		"cmd":       "start",
 		"sessionId": session.ID,
 		"userId":    userID,
-		"config":    map[string]any{"maxJobs": req.MaxJobs, "dryRun": req.DryRun},
+		"config":    map[string]any{"keywords": expandedKeywords, "maxJobs": req.MaxJobs, "dryRun": req.DryRun},
 	}
 	payload, _ := json.Marshal(cmd)
 	_ = h.redis.Publish(ctx, "automation:commands:"+userID, payload).Err()

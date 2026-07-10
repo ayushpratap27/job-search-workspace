@@ -9,6 +9,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/ayushpratap27/job-search-workspace/backend/internal/ai"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/config"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/db"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/tasks"
@@ -45,10 +46,13 @@ func main() {
 		},
 	})
 
+	// AI provider
+	aiProvider := ai.New(cfg.AIProvider, cfg.OpenAIAPIKey, cfg.GeminiAPIKey)
+
 	// Register task handlers
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(tasks.TypeTriggerJobSearch, tasks.NewJobSearchHandler(pool, redisClient).ProcessTask)
-	mux.HandleFunc(tasks.TypeDailySummary, tasks.NewDailySummaryHandler(pool).ProcessTask)
+	mux.HandleFunc(tasks.TypeDailySummary, tasks.NewDailySummaryHandler(pool, aiProvider).ProcessTask)
 
 	// Start scheduler for cron tasks
 	scheduler := asynq.NewScheduler(redisOpt, nil)

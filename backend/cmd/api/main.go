@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ayushpratap27/job-search-workspace/backend/internal/ai"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/applications"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/auth"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/automation"
@@ -54,6 +55,9 @@ func main() {
 	// Start WebSocket hub
 	wsHub := ws.NewHub()
 	go wsHub.Run()
+
+	// AI provider
+	aiProvider := ai.New(cfg.AIProvider, cfg.OpenAIAPIKey, cfg.GeminiAPIKey)
 
 	// Auth service
 	authSvc := auth.NewService(cfg.JWTSecret, cfg.JWTAccessTTLMinutes, cfg.JWTRefreshTTLDays, redisClient)
@@ -108,7 +112,7 @@ func main() {
 		dashboard.NewHandler(dashRepo).RegisterRoutes(protected.Group("/dashboard"))
 
 		if redisClient != nil {
-			automation.NewHandler(sessionRepo, redisClient).RegisterRoutes(protected.Group("/automation"))
+			automation.NewHandler(sessionRepo, redisClient, pool, aiProvider).RegisterRoutes(protected.Group("/automation"))
 		}
 
 		_ = notifSvc // notifications handler will be added in next commit

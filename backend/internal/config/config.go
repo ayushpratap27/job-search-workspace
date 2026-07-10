@@ -16,6 +16,17 @@ type Config struct {
 	JWTAccessTTLMinutes int    `mapstructure:"JWT_ACCESS_TTL_MINUTES"`
 	JWTRefreshTTLDays   int    `mapstructure:"JWT_REFRESH_TTL_DAYS"`
 	AllowedOrigin       string `mapstructure:"ALLOWED_ORIGIN"`
+	// AI
+	AIProvider   string `mapstructure:"AI_PROVIDER"`   // openai | gemini | none
+	OpenAIAPIKey string `mapstructure:"OPENAI_API_KEY"`
+	GeminiAPIKey string `mapstructure:"GEMINI_API_KEY"`
+	// SMTP
+	SMTPHost      string `mapstructure:"SMTP_HOST"`
+	SMTPPort      int    `mapstructure:"SMTP_PORT"`
+	SMTPUser      string `mapstructure:"SMTP_USER"`
+	SMTPPassword  string `mapstructure:"SMTP_PASSWORD"`
+	SMTPFrom      string `mapstructure:"SMTP_FROM"`
+	SummaryRecipient string `mapstructure:"SUMMARY_RECIPIENT_EMAIL"`
 }
 
 func Load() *Config {
@@ -27,6 +38,8 @@ func Load() *Config {
 	viper.SetDefault("ALLOWED_ORIGIN", "http://localhost:5173")
 	viper.SetDefault("JWT_ACCESS_TTL_MINUTES", 15)
 	viper.SetDefault("JWT_REFRESH_TTL_DAYS", 7)
+	viper.SetDefault("AI_PROVIDER", "none")
+	viper.SetDefault("SMTP_PORT", 587)
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Printf("no .env file found, reading from environment: %v", err)
