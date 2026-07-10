@@ -56,6 +56,9 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 	return &Repository{pool: pool}
 }
 
+// Pool exposes the underlying pool for direct queries in the automation bridge.
+func (r *Repository) Pool() *pgxpool.Pool { return r.pool }
+
 type ListParams struct {
 	UserID           string
 	Company          string

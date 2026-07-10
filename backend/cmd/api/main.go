@@ -12,12 +12,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/applications"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/auth"
+	"github.com/ayushpratap27/job-search-workspace/backend/internal/automation"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/companies"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/config"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/dashboard"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/db"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/networking"
+	"github.com/ayushpratap27/job-search-workspace/backend/internal/notifications"
 	recenthires "github.com/ayushpratap27/job-search-workspace/backend/internal/recent_hires"
+	"github.com/ayushpratap27/job-search-workspace/backend/internal/sessions"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/ws"
 )
 
@@ -88,13 +91,27 @@ func main() {
 		companyRepo := companies.NewRepository(pool)
 		appRepo := applications.NewRepository(pool)
 		recentHireRepo := recenthires.NewRepository(pool)
+		sessionRepo := sessions.NewRepository(pool)
+		notifSvc := notifications.NewService(pool)
 		dashRepo := dashboard.NewRepository(pool)
+
+		// Start automation event bridge
+		if redisClient != nil {
+			bridge := automation.NewBridge(redisClient, wsHub, sessionRepo, companyRepo, appRepo, recentHireRepo, notifSvc)
+			bridge.Start()
+		}
 
 		companies.NewHandler(companyRepo).RegisterRoutes(protected.Group("/companies"))
 		applications.NewHandler(appRepo).RegisterRoutes(protected.Group("/applications"))
 		recenthires.NewHandler(recentHireRepo).RegisterRoutes(protected.Group("/recent-hires"))
 		networking.NewHandler(appRepo).RegisterRoutes(protected.Group("/networking"))
 		dashboard.NewHandler(dashRepo).RegisterRoutes(protected.Group("/dashboard"))
+
+		if redisClient != nil {
+			automation.NewHandler(sessionRepo, redisClient).RegisterRoutes(protected.Group("/automation"))
+		}
+
+		_ = notifSvc // notifications handler will be added in next commit
 	} else {
 		log.Println("warning: DB routes disabled — start Docker and restart to enable")
 	}
