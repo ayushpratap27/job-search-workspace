@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/config"
+	"github.com/ayushpratap27/job-search-workspace/backend/internal/db"
 )
 
 func main() {
@@ -18,6 +19,24 @@ func main() {
 
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
+	}
+
+	// Connect to PostgreSQL (non-fatal on startup so dev works without Docker)
+	pool, err := db.NewPostgresPool(cfg.DatabaseURL)
+	if err != nil {
+		log.Printf("warning: postgres unavailable (%v) — start Docker to enable DB features", err)
+	} else {
+		defer pool.Close()
+		log.Println("postgres connected")
+	}
+
+	// Connect to Redis
+	redisClient, err := db.NewRedisClient(cfg.RedisAddr, cfg.RedisPassword)
+	if err != nil {
+		log.Printf("warning: redis unavailable (%v) — start Docker to enable cache/queue features", err)
+	} else {
+		defer redisClient.Close()
+		log.Println("redis connected")
 	}
 
 	r := gin.Default()
