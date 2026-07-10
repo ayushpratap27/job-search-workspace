@@ -18,6 +18,7 @@ import (
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/db"
 	"github.com/ayushpratap27/job-search-workspace/backend/internal/networking"
 	recenthires "github.com/ayushpratap27/job-search-workspace/backend/internal/recent_hires"
+	"github.com/ayushpratap27/job-search-workspace/backend/internal/ws"
 )
 
 func main() {
@@ -47,6 +48,10 @@ func main() {
 
 	r := gin.Default()
 
+	// Start WebSocket hub
+	wsHub := ws.NewHub()
+	go wsHub.Run()
+
 	// Auth service
 	authSvc := auth.NewService(cfg.JWTSecret, cfg.JWTAccessTTLMinutes, cfg.JWTRefreshTTLDays, redisClient)
 
@@ -63,6 +68,21 @@ func main() {
 	// Protected routes — all routes below require a valid JWT
 	protected := api.Group("")
 	protected.Use(auth.Middleware(authSvc))
+
+	// WebSocket endpoint (auth via query param ?token=)
+	api.GET("/ws", func(c *gin.Context) {
+		token := c.Query("token")
+		if token == "" {
+			c.Status(http.StatusUnauthorized)
+			return
+		}
+		claims, err := authSvc.ValidateAccessToken(token)
+		if err != nil {
+			c.Status(http.StatusUnauthorized)
+			return
+		}
+		ws.Upgrade(wsHub, claims.UserID, c.Writer, c.Request)
+	})
 
 	if pool != nil {
 		companyRepo := companies.NewRepository(pool)
