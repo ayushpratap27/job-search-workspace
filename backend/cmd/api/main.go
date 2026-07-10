@@ -110,12 +110,13 @@ func main() {
 		recenthires.NewHandler(recentHireRepo).RegisterRoutes(protected.Group("/recent-hires"))
 		networking.NewHandler(appRepo).RegisterRoutes(protected.Group("/networking"))
 		dashboard.NewHandler(dashRepo).RegisterRoutes(protected.Group("/dashboard"))
+		notifications.NewHandler(notifSvc).RegisterRoutes(protected.Group("/notifications"))
 
 		if redisClient != nil {
 			automation.NewHandler(sessionRepo, redisClient, pool, aiProvider).RegisterRoutes(protected.Group("/automation"))
 		}
 
-		_ = notifSvc // notifications handler will be added in next commit
+		_ = notifSvc // used above for notifications handler and bridge
 	} else {
 		log.Println("warning: DB routes disabled — start Docker and restart to enable")
 	}
