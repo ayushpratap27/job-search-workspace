@@ -4,19 +4,18 @@ import { getRedisClient } from './redis'
 import { publishEvent } from './reporter'
 import { saveCheckpoint, loadCheckpoint, clearCheckpoint } from './checkpoint'
 import { LinkedInProvider } from './linkedin/provider'
-import type { AutomationCommand, JobSearchConfig } from './types'
+import type { AutomationCommand, JobSearchConfig, JobListing } from './types'
 
 const SESSION_PATH = process.env.SESSION_PATH ?? './session/linkedin.json'
 
-// Active provider reference (so pause/resume can control it)
 let activeProvider: LinkedInProvider | null = null
 let paused = false
+// When automation pauses for user action (login, CAPTCHA), keep the browser open
+let browserShouldClose = true
 
 async function main(): Promise<void> {
   const userId = process.env.USER_ID
-  if (!userId) {
-    throw new Error('USER_ID is required in environment variables')
-  }
+  if (!userId) throw new Error('USER_ID is required in environment variables')
 
   const subscriber: Redis = getRedisClient().duplicate()
   const channel = `automation:commands:${userId}`
@@ -54,6 +53,7 @@ async function main(): Promise<void> {
         break
       case 'stop':
         paused = true
+        browserShouldClose = true
         await activeProvider?.close()
         activeProvider = null
         break
@@ -62,6 +62,7 @@ async function main(): Promise<void> {
 
   process.on('SIGINT', async () => {
     console.log('[automation] shutting down...')
+    browserShouldClose = true
     await activeProvider?.close()
     await subscriber.quit()
     process.exit(0)
@@ -69,6 +70,8 @@ async function main(): Promise<void> {
 }
 
 async function runSession(userId: string, command: AutomationCommand): Promise<void> {
+  browserShouldClose = true // assume we close unless pausing for user action
+
   const provider = new LinkedInProvider(SESSION_PATH)
   activeProvider = provider
 
@@ -79,33 +82,32 @@ async function runSession(userId: string, command: AutomationCommand): Promise<v
   })
 
   try {
-    // Wrap initialize + search together so any blocker (login redirect, CAPTCHA)
-    // during startup becomes needs_attention instead of a fatal crash.
-    let jobs: import('./types').JobListing[]
+    const config = command.config as JobSearchConfig
+
+    // Initialize + search wrapped together so blockers become needs_attention
+    let jobs: JobListing[]
     try {
       await provider.initialize()
-      const config = command.config as JobSearchConfig
       jobs = await provider.search(config)
     } catch (err: unknown) {
       const blocker = err as { blocked?: boolean; reason?: string; message?: string }
       if (blocker.blocked) {
+        browserShouldClose = false // keep browser open so user can interact
         await publishEvent(userId, {
           type: 'automation:needs_attention',
           sessionId: command.sessionId,
-          data: {
-            reason: blocker.reason ?? 'blocker',
-            message: blocker.message ?? 'Automation paused.',
-          },
+          data: { reason: blocker.reason ?? 'blocker', message: blocker.message ?? 'Automation paused.' },
         })
         return
       }
-      throw err // non-blocker error → outer catch
+      throw err
     }
 
     console.log(`[automation] found ${jobs.length} jobs after prioritization`)
 
     for (let i = 0; i < jobs.length; i++) {
       if (paused) {
+        browserShouldClose = false
         await saveCheckpoint({
           sessionId: command.sessionId,
           currentIndex: i,
@@ -129,14 +131,18 @@ async function runSession(userId: string, command: AutomationCommand): Promise<v
         data: { jobUrl: job.jobUrl, company: job.company, role: job.role, location: job.location, priority: job.priority },
       })
 
-      // Apply
       let result
       try {
-        await publishEvent(userId, { type: 'automation:job_applying', sessionId: command.sessionId, data: { jobUrl: job.jobUrl, company: job.company, role: job.role } })
+        await publishEvent(userId, {
+          type: 'automation:job_applying',
+          sessionId: command.sessionId,
+          data: { jobUrl: job.jobUrl, company: job.company, role: job.role },
+        })
         result = await provider.apply(job)
       } catch (err: unknown) {
         const blocker = err as { blocked?: boolean; reason?: string; message?: string }
         if (blocker.blocked) {
+          browserShouldClose = false
           await saveCheckpoint({
             sessionId: command.sessionId,
             currentIndex: i,
@@ -156,6 +162,7 @@ async function runSession(userId: string, command: AutomationCommand): Promise<v
       }
 
       if (result.status === 'needs_attention') {
+        browserShouldClose = false
         await saveCheckpoint({
           sessionId: command.sessionId,
           currentIndex: i + 1,
@@ -186,7 +193,6 @@ async function runSession(userId: string, command: AutomationCommand): Promise<v
         })
       }
 
-      // Collect recent hires
       const hires = await provider.collectRecentHires(job).catch(() => [])
       if (hires.length > 0) {
         await publishEvent(userId, {
@@ -205,6 +211,7 @@ async function runSession(userId: string, command: AutomationCommand): Promise<v
       sessionId: command.sessionId,
       data: { jobsFound: jobs.length },
     })
+
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[automation] fatal session error:', msg)
@@ -214,8 +221,13 @@ async function runSession(userId: string, command: AutomationCommand): Promise<v
       data: { message: msg },
     })
   } finally {
-    await provider.close()
-    activeProvider = null
+    // Only close the browser if we are NOT pausing for user action
+    if (browserShouldClose) {
+      await provider.close()
+      activeProvider = null
+    } else {
+      console.log('[automation] browser kept open — waiting for user action')
+    }
   }
 }
 
@@ -228,7 +240,6 @@ async function resumeSession(userId: string, command: AutomationCommand): Promis
 
   console.log(`[automation] resuming from job index ${checkpoint.currentIndex}`)
 
-  // Build an explicit resume command — do not spread to avoid field confusion
   const resumeCommand: AutomationCommand = {
     cmd: 'start',
     sessionId: command.sessionId,

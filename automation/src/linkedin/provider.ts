@@ -28,33 +28,57 @@ export class LinkedInProvider implements JobPlatformProvider {
       waitUntil: 'domcontentloaded',
       timeout: 30_000,
     })
-    await randomSleep(2000, 3000)
 
-    // Check if we're actually logged in
+    // Wait longer — LinkedIn's JS redirect to /login can take 3-5 seconds
+    await randomSleep(5000, 6000)
+
     const currentUrl = this.page.url()
-    if (
+    const onAuthPage =
       currentUrl.includes('/login') ||
       currentUrl.includes('/authwall') ||
-      currentUrl.includes('/checkpoint')
-    ) {
+      currentUrl.includes('/checkpoint') ||
+      currentUrl.includes('/uas/')
+
+    // Secondary check: look for an element that only exists when logged in
+    const loggedInElement = await this.page
+      .$(`.global-nav__me, .feed-identity-module, [data-control-name="identity_nav_top"]`)
+      .catch(() => null)
+
+    const notLoggedIn = onAuthPage || !loggedInElement
+
+    if (notLoggedIn) {
+      // Delete stale session file to prevent the same empty-session loop next run
+      const fs = await import('fs')
+      if (fs.existsSync(this.sessionPath)) {
+        fs.unlinkSync(this.sessionPath)
+        console.log('[session] Deleted stale/empty session file')
+      }
+
       console.log('[session] Not logged in to LinkedIn.')
-      console.log('[session] Please log in manually in the browser window.')
-      console.log('[session] Waiting up to 5 minutes for login...')
+      console.log('[session] Please log in manually in the open browser window.')
+      console.log('[session] The automation will continue automatically once you log in.')
+      console.log('[session] Waiting up to 5 minutes...')
 
       try {
         await this.page.waitForURL(
-          (url) =>
-            !url.toString().includes('/login') &&
-            !url.toString().includes('/authwall') &&
-            !url.toString().includes('/checkpoint'),
-          { timeout: 5 * 60 * 1000 }, // 5 minutes
+          (url) => {
+            const u = url.toString()
+            return (
+              !u.includes('/login') &&
+              !u.includes('/authwall') &&
+              !u.includes('/checkpoint') &&
+              !u.includes('/uas/')
+            )
+          },
+          { timeout: 5 * 60 * 1000 },
         )
-        console.log('[session] Login detected! Saving session...')
-        await randomSleep(2000, 3000)
+        // Extra wait after login to let the page settle
+        await randomSleep(3000, 5000)
+        console.log('[session] Login detected! Saving session and continuing...')
       } catch {
         throw Object.assign(
           new Error(
-            'LinkedIn login timed out. Please start automation again after logging in.',
+            'LinkedIn login timed out (5 min). Please log in and click Start Automation again.',
           ),
           { blocked: true, reason: 'session_expired' as const },
         )
