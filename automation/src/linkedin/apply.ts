@@ -102,7 +102,8 @@ async function fillCurrentStep(page: Page): Promise<FillResult> {
   if (phoneField) {
     const value = await phoneField.inputValue()
     if (!value) {
-      await phoneField.fill('+91 9999999999')
+      const phone = process.env.PHONE_NUMBER ?? '+91 9999999999'
+      await phoneField.fill(phone)
       await randomSleep(300, 600)
     }
   }
