@@ -79,10 +79,28 @@ async function runSession(userId: string, command: AutomationCommand): Promise<v
   })
 
   try {
-    await provider.initialize()
-
-    const config = command.config as JobSearchConfig
-    const jobs = await provider.search(config)
+    // Wrap initialize + search together so any blocker (login redirect, CAPTCHA)
+    // during startup becomes needs_attention instead of a fatal crash.
+    let jobs: import('./types').JobListing[]
+    try {
+      await provider.initialize()
+      const config = command.config as JobSearchConfig
+      jobs = await provider.search(config)
+    } catch (err: unknown) {
+      const blocker = err as { blocked?: boolean; reason?: string; message?: string }
+      if (blocker.blocked) {
+        await publishEvent(userId, {
+          type: 'automation:needs_attention',
+          sessionId: command.sessionId,
+          data: {
+            reason: blocker.reason ?? 'blocker',
+            message: blocker.message ?? 'Automation paused.',
+          },
+        })
+        return
+      }
+      throw err // non-blocker error → outer catch
+    }
 
     console.log(`[automation] found ${jobs.length} jobs after prioritization`)
 

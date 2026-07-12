@@ -58,23 +58,58 @@ func (h *Handler) start(c *gin.Context) {
 	}
 
 	var req struct {
-		MaxJobs  int  `json:"maxJobs"`
-		DryRun   bool `json:"dryRun"`
+		MaxJobs int  `json:"maxJobs"`
+		DryRun  bool `json:"dryRun"`
 	}
 	_ = c.ShouldBindJSON(&req)
 
-	// Load user's configured keywords and expand with AI
-	var keywordsJSON []byte
-	_ = h.pool.QueryRow(ctx,
-		`SELECT keywords FROM search_configs WHERE user_id = $1 AND is_active = true LIMIT 1`, userID,
-	).Scan(&keywordsJSON)
+	// Load full search config from DB
+	var cfgKeywords, cfgFilters, cfgPriorityOrder []byte
+	var cfgMaxJobs int
+	dbErr := h.pool.QueryRow(ctx, `
+		SELECT keywords, filters, priority_order, max_jobs_per_session
+		FROM search_configs WHERE user_id = $1 AND is_active = true LIMIT 1`, userID,
+	).Scan(&cfgKeywords, &cfgFilters, &cfgPriorityOrder, &cfgMaxJobs)
+	if dbErr != nil {
+		cfgMaxJobs = 50 // no config row yet — use default
+	}
+
+	// maxJobs: prefer request value if non-zero, otherwise DB value, otherwise 50
+	maxJobs := req.MaxJobs
+	if maxJobs <= 0 {
+		maxJobs = cfgMaxJobs
+	}
+	if maxJobs <= 0 {
+		maxJobs = 50
+	}
 
 	var baseKeywords []string
-	if len(keywordsJSON) > 0 {
-		_ = json.Unmarshal(keywordsJSON, &baseKeywords)
+	if len(cfgKeywords) > 0 {
+		_ = json.Unmarshal(cfgKeywords, &baseKeywords)
 	}
 	if len(baseKeywords) == 0 {
 		baseKeywords = []string{"Software Engineer", "SDE"}
+	}
+
+	var filters interface{} = map[string]interface{}{
+		"timeRange": "24h",
+		"jobTypes":  []string{"full_time", "internship"},
+	}
+	if len(cfgFilters) > 0 {
+		var f interface{}
+		if json.Unmarshal(cfgFilters, &f) == nil {
+			filters = f
+		}
+	}
+
+	var priorityOrder interface{} = []string{
+		"bangalore", "remote", "hyderabad", "pune", "noida", "gurugram", "chennai", "other",
+	}
+	if len(cfgPriorityOrder) > 0 {
+		var p interface{}
+		if json.Unmarshal(cfgPriorityOrder, &p) == nil {
+			priorityOrder = p
+		}
 	}
 
 	expandedKeywords, err := h.ai.ExpandJobTitles(ctx, baseKeywords)
@@ -91,12 +126,18 @@ func (h *Handler) start(c *gin.Context) {
 	// Set Redis lock for the session duration
 	_ = h.redis.Set(ctx, lockKey, session.ID, sessionLockTTL).Err()
 
-	// Publish start command with expanded keywords
+	// Publish start command with full config
 	cmd := map[string]any{
 		"cmd":       "start",
 		"sessionId": session.ID,
 		"userId":    userID,
-		"config":    map[string]any{"keywords": expandedKeywords, "maxJobs": req.MaxJobs, "dryRun": req.DryRun},
+		"config": map[string]any{
+			"keywords":      expandedKeywords,
+			"maxJobs":       maxJobs,
+			"filters":       filters,
+			"priorityOrder": priorityOrder,
+			"dryRun":        req.DryRun,
+		},
 	}
 	payload, _ := json.Marshal(cmd)
 	_ = h.redis.Publish(ctx, "automation:commands:"+userID, payload).Err()

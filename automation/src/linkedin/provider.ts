@@ -24,34 +24,86 @@ export class LinkedInProvider implements JobPlatformProvider {
     const ctx = await createContext(this.sessionPath, headless)
     this.page = await ctx.newPage()
 
-    // Request desktop notifications permission is already set in context
     await this.page.goto('https://www.linkedin.com', {
       waitUntil: 'domcontentloaded',
       timeout: 30_000,
     })
     await randomSleep(2000, 3000)
 
-    // Save session after every page load so it's always fresh
+    // Check if we're actually logged in
+    const currentUrl = this.page.url()
+    if (
+      currentUrl.includes('/login') ||
+      currentUrl.includes('/authwall') ||
+      currentUrl.includes('/checkpoint')
+    ) {
+      console.log('[session] Not logged in to LinkedIn.')
+      console.log('[session] Please log in manually in the browser window.')
+      console.log('[session] Waiting up to 5 minutes for login...')
+
+      try {
+        await this.page.waitForURL(
+          (url) =>
+            !url.toString().includes('/login') &&
+            !url.toString().includes('/authwall') &&
+            !url.toString().includes('/checkpoint'),
+          { timeout: 5 * 60 * 1000 }, // 5 minutes
+        )
+        console.log('[session] Login detected! Saving session...')
+        await randomSleep(2000, 3000)
+      } catch {
+        throw Object.assign(
+          new Error(
+            'LinkedIn login timed out. Please start automation again after logging in.',
+          ),
+          { blocked: true, reason: 'session_expired' as const },
+        )
+      }
+    }
+
+    // Save session only after confirmed login
     await saveSession(this.sessionPath)
   }
 
   async search(config: JobSearchConfig): Promise<JobListing[]> {
     if (!this.page) throw new Error('provider not initialized')
 
+    // When resuming from checkpoint, use the saved URLs directly
+    if (config._resumeJobUrls && config._resumeJobUrls.length > 0) {
+      console.log(`[linkedin] resuming with ${config._resumeJobUrls.length} saved job URLs`)
+      const jobs: JobListing[] = []
+      for (const url of config._resumeJobUrls) {
+        const details = await extractJobDetails(this.page, url)
+        const blocker = await detectBlocker(this.page)
+        if (blocker.blocked) {
+          throw Object.assign(new Error(blocker.message ?? 'Blocker detected'), blocker)
+        }
+        jobs.push({
+          jobUrl: url,
+          company: details.company ?? 'Unknown',
+          role: details.role ?? 'Unknown',
+          location: details.location ?? '',
+          companyLinkedInUrl: details.companyLinkedInUrl,
+          careerPageUrl: details.careerPageUrl,
+          postedAt: details.postedAt,
+        })
+        await randomSleep(1000, 2000)
+      }
+      return jobs
+    }
+
     const searchURL = buildSearchURL(config.keywords, config.filters)
     const rawURLs = await collectJobURLs(this.page, searchURL, config.maxJobs)
 
     console.log(`[linkedin] collected ${rawURLs.length} job URLs`)
 
-    // Extract details for each job
     const jobs: JobListing[] = []
     for (const url of rawURLs) {
       const details = await extractJobDetails(this.page, url)
 
-      // Check for blocker after navigating
       const blocker = await detectBlocker(this.page)
       if (blocker.blocked) {
-        console.warn(`[linkedin] blocker after navigating to ${url}: ${blocker.reason}`)
+        console.warn(`[linkedin] blocker detected: ${blocker.reason}`)
         throw Object.assign(new Error(blocker.message ?? 'Blocker detected'), blocker)
       }
 
