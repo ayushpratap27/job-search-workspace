@@ -1,0 +1,76 @@
+services:
+  # ── Backend API ───────────────────────────────────────────────────────────
+  - type: web
+    name: jsw-api
+    runtime: go
+    rootDir: backend
+    buildCommand: go build -o server ./cmd/api
+    startCommand: ./server
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false        # set in Render dashboard
+      - key: REDIS_ADDR
+        sync: false        # Upstash endpoint:port
+      - key: REDIS_PASSWORD
+        sync: false        # Upstash password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL_MINUTES
+        value: 15
+      - key: JWT_REFRESH_TTL_DAYS
+        value: 7
+      - key: ALLOWED_ORIGIN
+        value: http://localhost:5173
+      - key: ALLOWED_ORIGINS
+        sync: false        # your Vercel URL, e.g. https://jsw.vercel.app
+      - key: AI_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: SUMMARY_RECIPIENT_EMAIL
+        sync: false
+
+  # ── Background Worker ─────────────────────────────────────────────────────
+  - type: worker
+    name: jsw-worker
+    runtime: go
+    rootDir: backend
+    buildCommand: go build -o worker ./cmd/worker
+    startCommand: ./worker
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_ADDR
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: AI_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: SUMMARY_RECIPIENT_EMAIL
+        sync: false

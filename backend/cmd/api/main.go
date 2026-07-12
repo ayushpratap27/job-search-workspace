@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -61,8 +62,17 @@ func main() {
 	r := gin.Default()
 
 	// CORS — allow frontend origin for all routes
+	origins := []string{cfg.AllowedOrigin}
+	if cfg.AllowedOrigins != "" {
+		for _, o := range strings.Split(cfg.AllowedOrigins, ",") {
+			o = strings.TrimSpace(o)
+			if o != "" && o != cfg.AllowedOrigin {
+				origins = append(origins, o)
+			}
+		}
+	}
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{cfg.AllowedOrigin},
+		AllowOrigins:     origins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},

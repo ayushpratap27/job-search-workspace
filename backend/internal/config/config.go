@@ -17,7 +17,9 @@ type Config struct {
 	JWTSecret           string `mapstructure:"JWT_SECRET"`
 	JWTAccessTTLMinutes int    `mapstructure:"JWT_ACCESS_TTL_MINUTES"`
 	JWTRefreshTTLDays   int    `mapstructure:"JWT_REFRESH_TTL_DAYS"`
-	AllowedOrigin       string `mapstructure:"ALLOWED_ORIGIN"`
+	AllowedOrigin  string `mapstructure:"ALLOWED_ORIGIN"`
+	// Comma-separated list of additional allowed origins (e.g. Vercel URL)
+	AllowedOrigins string `mapstructure:"ALLOWED_ORIGINS"`
 	// AI
 	AIProvider   string `mapstructure:"AI_PROVIDER"`   // openai | gemini | groq | none
 	OpenAIAPIKey string `mapstructure:"OPENAI_API_KEY"`
