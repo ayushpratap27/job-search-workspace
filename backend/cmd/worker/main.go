@@ -53,7 +53,7 @@ func main() {
 	})
 
 	// AI provider
-	aiProvider := ai.New(cfg.AIProvider, cfg.OpenAIAPIKey, cfg.GeminiAPIKey)
+	aiProvider := ai.New(cfg.AIProvider, cfg.OpenAIAPIKey, cfg.GeminiAPIKey, cfg.GroqAPIKey)
 
 	// Email client
 	emailClient := email.NewClient(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPFrom)

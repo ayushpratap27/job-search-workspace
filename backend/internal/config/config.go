@@ -19,9 +19,10 @@ type Config struct {
 	JWTRefreshTTLDays   int    `mapstructure:"JWT_REFRESH_TTL_DAYS"`
 	AllowedOrigin       string `mapstructure:"ALLOWED_ORIGIN"`
 	// AI
-	AIProvider   string `mapstructure:"AI_PROVIDER"`   // openai | gemini | none
+	AIProvider   string `mapstructure:"AI_PROVIDER"`   // openai | gemini | groq | none
 	OpenAIAPIKey string `mapstructure:"OPENAI_API_KEY"`
 	GeminiAPIKey string `mapstructure:"GEMINI_API_KEY"`
+	GroqAPIKey   string `mapstructure:"GROQ_API_KEY"`
 	// SMTP
 	SMTPHost      string `mapstructure:"SMTP_HOST"`
 	SMTPPort      int    `mapstructure:"SMTP_PORT"`

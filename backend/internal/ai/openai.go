@@ -12,14 +12,29 @@ import (
 )
 
 type openAIProvider struct {
-	apiKey string
-	client *http.Client
+	apiKey  string
+	baseURL string
+	model   string
+	client  *http.Client
 }
 
+// NewOpenAI creates a provider targeting the official OpenAI API.
 func NewOpenAI(apiKey string) Provider {
 	return &openAIProvider{
-		apiKey: apiKey,
-		client: &http.Client{Timeout: 30 * time.Second},
+		apiKey:  apiKey,
+		baseURL: "https://api.openai.com/v1",
+		model:   "gpt-4o-mini",
+		client:  &http.Client{Timeout: 30 * time.Second},
+	}
+}
+
+// NewOpenAICompatible creates a provider for any OpenAI-compatible endpoint (e.g. Groq).
+func NewOpenAICompatible(apiKey, baseURL, model string) Provider {
+	return &openAIProvider{
+		apiKey:  apiKey,
+		baseURL: baseURL,
+		model:   model,
+		client:  &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -62,14 +77,14 @@ Be direct, specific with the numbers, and end with a brief motivating note. No b
 
 func (p *openAIProvider) call(ctx context.Context, prompt string) (string, error) {
 	reqBody, _ := json.Marshal(map[string]any{
-		"model": "gpt-4o-mini",
+		"model": p.model,
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
 	})
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"https://api.openai.com/v1/chat/completions",
+		p.baseURL+"/chat/completions",
 		bytes.NewReader(reqBody),
 	)
 	if err != nil {

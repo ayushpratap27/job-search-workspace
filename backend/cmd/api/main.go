@@ -75,7 +75,7 @@ func main() {
 	go wsHub.Run()
 
 	// AI provider
-	aiProvider := ai.New(cfg.AIProvider, cfg.OpenAIAPIKey, cfg.GeminiAPIKey)
+	aiProvider := ai.New(cfg.AIProvider, cfg.OpenAIAPIKey, cfg.GeminiAPIKey, cfg.GroqAPIKey)
 
 	// Auth service
 	authSvc := auth.NewService(cfg.JWTSecret, cfg.JWTAccessTTLMinutes, cfg.JWTRefreshTTLDays, redisClient)

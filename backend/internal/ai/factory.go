@@ -4,7 +4,7 @@ import "log"
 
 // New returns the appropriate provider based on the provider name.
 // Falls back to the static synonym map if the provider is unconfigured.
-func New(provider, openAIKey, geminiKey string) Provider {
+func New(provider, openAIKey, geminiKey, groqKey string) Provider {
 	switch provider {
 	case "openai":
 		if openAIKey == "" {
@@ -20,8 +20,15 @@ func New(provider, openAIKey, geminiKey string) Provider {
 		}
 		log.Println("[ai] using Gemini provider")
 		return NewGemini(geminiKey)
+	case "groq":
+		if groqKey == "" {
+			log.Println("[ai] AI_PROVIDER=groq but GROQ_API_KEY not set — using fallback")
+			return NewFallback()
+		}
+		log.Println("[ai] using Groq provider (llama-3.3-70b-versatile)")
+		return NewOpenAICompatible(groqKey, "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile")
 	default:
-		log.Println("[ai] using fallback synonym map (set AI_PROVIDER=openai|gemini to enable AI)")
+		log.Println("[ai] using fallback synonym map (set AI_PROVIDER=openai|gemini|groq to enable AI)")
 		return NewFallback()
 	}
 }
